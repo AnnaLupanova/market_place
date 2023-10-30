@@ -2,16 +2,10 @@ from django.contrib import admin
 from .models import *
 from mptt.admin import MPTTModelAdmin
 
-
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'model', 'created_date_of_product',)
 
-
-# @admin.register(Address)
-# class AddressAdmin(admin.ModelAdmin):
-#     list_display = ('id', 'country', 'city', 'street', 'building_number',)
-#
 
 @admin.action(description='Обнулить задолженность перед поставщиком')
 def reset_debt(modeladmin, request, queryset):
