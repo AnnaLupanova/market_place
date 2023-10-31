@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Provider, Product, Employee, Contact
-
+from datetime import datetime
 
 class SerializersContact(serializers.ModelSerializer):
     class Meta:
@@ -30,6 +30,18 @@ class SerializersProduct(serializers.ModelSerializer):
         instance.save()
         return instance
 
+    def validate_name(self, value):
+        if len(value) > 25:
+            raise serializers.ValidationError('The length of name product must be less 25 symbols')
+        return value
+
+    def validate_created_date_of_product(self, value):
+        try:
+            datetime.strptime(str(value), '%Y-%m-%d')
+            return value
+        except:
+            raise serializers.ValidationError('Date format must be %Y-%m-%d')
+
 
 class SerializersProviderAll(serializers.ModelSerializer):
     contacts = SerializersContact(many=True)
@@ -58,3 +70,8 @@ class SerializersProvider(serializers.ModelSerializer):
         instance.date_created = validated_data.get('date_created', instance.date_created)
         instance.save()
         return instance
+
+    def validate_name(self, value):
+        if len(value) > 50:
+            raise serializers.ValidationError('The length of name objects must be less 50 symbols')
+        return value

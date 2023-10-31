@@ -7,7 +7,40 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Product, Provider, Contact
 from .serializers import SerializersProvider, SerializersProviderAll, SerializersProduct
 from rest_framework.parsers import JSONParser
+from django.shortcuts import render
+import qrcode
+from qrcode.image.pil import PilImage
+from PIL import Image
+import io
+import base64
+from .tasks import send_email_fun
+from django.conf import settings
 
+
+class GetQr(APIView):
+    def get(self, request, *args, **kwargs):
+        pk = kwargs.get("pk", None)
+        contact = Contact.objects.filter(company_id=pk)
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        data = ','.join(map(str, contact))
+        qr.add_data(data)
+        qr.make(fit=True)
+
+        qr_code_image = qr.make_image(fill_color="black", back_color="white").convert('RGB')
+        buffer = io.BytesIO()
+        qr_code_image.save(buffer, format="PNG")
+
+        qr_code_image_data = base64.b64encode(buffer.getvalue()).decode()
+        try:
+            send_email_fun.delay("Contacts", qr_code_image_data, settings.EMAIL_HOST_USER, "lupanova.99@mail.ru")
+            return Response(status=status.HTTP_200_OK)
+        except:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class Objects(APIView):
@@ -17,9 +50,6 @@ class Objects(APIView):
     def get(self, request):
         providers = Provider.objects.all()
         serializer = SerializersProviderAll(providers, many=True)
-        providers = Provider.objects.filter(parent__isnull=False)
-        for i in providers:
-            print(i.name)
         return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
@@ -123,6 +153,7 @@ class ObjectsHaveHighDebt(APIView):
 
 class ObjectsByProduct(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         product_id = request.query_params.get('product_id')
         providers = Provider.objects.filter(products__id=product_id)
