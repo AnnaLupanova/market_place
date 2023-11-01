@@ -26,6 +26,8 @@ SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
+
 ALLOWED_HOSTS = []
 
 # Application definition
@@ -37,14 +39,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'api',
+    'api.apps.ApiConfig',
     'mptt',
     'django_mptt_admin',
     'rest_framework',
     'celery',
     'django_celery_beat',
     'django_celery_results',
-    'rest_framework.authtoken',
+    'rest_framework_simplejwt',
 
 ]
 
@@ -207,5 +209,3 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
-#"refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTY5ODgzMDI4MiwiaWF0IjoxNjk4NzQzODgyLCJqdGkiOiIxNDNiMTQxOWRlODE0MDM5ODViZDE3ZDkxNWE3OWM1MSIsInVzZXJfaWQiOjF9.JDRRtb5AiG30u0NAyqFb3_8Er_9uY4DxMtaC9jcAk2o",
-#"access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjk4NzQ0MTgyLCJpYXQiOjE2OTg3NDM4ODIsImp0aSI6ImJkOTJjMTFmZDgzMzRmMjhiYjFiNzM3NzAzOTgzZTVjIiwidXNlcl9pZCI6MX0.HwFHVvPtzW8zEuvxdHYk_e-ahLIg2WpZ3qQFc31nyI8"

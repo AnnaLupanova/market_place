@@ -1,6 +1,27 @@
 from django.contrib import admin
 from .models import *
 from mptt.admin import MPTTModelAdmin
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import User
+from .tasks import reset_debt_celery
+
+
+class EmployeeInline(admin.StackedInline):
+    model = Employee
+
+
+class CustomUserAdmin(UserAdmin):
+    inlines = (EmployeeInline,)
+
+
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)
+
+
+@admin.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display = ('user', 'position', 'company',)
+
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
@@ -9,7 +30,10 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.action(description='Обнулить задолженность перед поставщиком')
 def reset_debt(modeladmin, request, queryset):
-    queryset.update(debt_to_provider=0.0)
+    if len(queryset) > 1:
+        reset_debt_celery(queryset)
+    else:
+        queryset.update(debt_to_provider=0.0)
 
 
 class ProviderInline(admin.TabularInline):
@@ -21,7 +45,7 @@ class ProviderInline(admin.TabularInline):
 class ProviderAdmin(MPTTModelAdmin):
     actions = [reset_debt]
     inlines = [ProviderInline]
-    list_display = ('name', 'type', 'parent', 'date_created',  'debt_to_provider',)
+    list_display = ('name', 'type', 'parent', 'date_created', 'debt_to_provider',)
     list_filter = ['contacts__city']
 
 
@@ -31,11 +55,7 @@ class ContactAdmin(admin.ModelAdmin):
     list_filter = ['city']
 
 
-@admin.register(Employee)
-class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ('first_name', 'last_name', 'email', 'position', 'company')
-
 
 @admin.register(RelatedProviderToProduct)
 class RelatedProviderToProductAdmin(admin.ModelAdmin):
-    list_display = ('id','product_id', 'provider_id')
+    list_display = ('id', 'product_id', 'provider_id')

@@ -1,6 +1,20 @@
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 from datetime import datetime
+from django.contrib.auth.models import User
+
+
+class Employee(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name='Имя пользователя', related_name='users')
+    position = models.CharField('Должность', max_length=128)
+    company = models.ForeignKey('Provider', on_delete=models.CASCADE, verbose_name='Сеть', related_name='employees')
+
+    class Meta:
+        verbose_name = 'Сотрудник'
+        verbose_name_plural = 'Сотруники'
+
+    def __str__(self):
+        return f'{self.user.username}'
 
 
 class Provider(MPTTModel):
@@ -39,7 +53,7 @@ class Product(models.Model):
     id = models.AutoField('id', primary_key=True)
     name = models.CharField('Название', max_length=128)
     model = models.CharField('Модель', max_length=128)
-    created_date_of_product = models.DateField('created_date')
+    created_date_of_product = models.DateField('Дата выпуска')
     company = models.ManyToManyField('Provider',
                                      through="RelatedProviderToProduct", related_name='products')
 
@@ -66,23 +80,6 @@ class Contact(models.Model):
 
     def __str__(self):
         return f'{self.email}, {self.country},  {self.city}, {self.street}, {self.building_number}'
-
-
-class Employee(models.Model):
-    id = models.AutoField('id', primary_key=True)
-    first_name = models.CharField('Имя', max_length=128)
-    last_name = models.CharField('Фамилия', max_length=128)
-    email = models.EmailField('email', max_length=128)
-    position = models.CharField('Должность', max_length=128)
-    is_active = models.BooleanField(default=True)
-    company = models.ForeignKey('Provider', on_delete=models.CASCADE, verbose_name='Сеть', related_name='employees')
-
-    class Meta:
-        verbose_name = 'Сотрудник'
-        verbose_name_plural = 'Сотруники'
-
-    def __str__(self):
-        return f'{self.last_name} {self.first_name}'
 
 
 class RelatedProviderToProduct(models.Model):

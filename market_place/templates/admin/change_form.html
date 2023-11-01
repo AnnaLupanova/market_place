@@ -1,0 +1,11 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+{% block submit_buttons_bottom %}
+{{ block.super }}
+<div class="submit-row list-group">
+
+<button type="button" title="Copy contacts" class="list-group-item active" name="_cancel" onclick="location.href='/admin/';">
+Copy contacts
+</button>
+</div>
+{% endblock %}

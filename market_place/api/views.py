@@ -1,16 +1,12 @@
-from django.shortcuts import render
 from django.db.models import Avg
 from rest_framework.views import APIView
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Product, Provider, Contact
+from .models import Product, Provider, Contact, Employee
 from .serializers import SerializersProvider, SerializersProviderAll, SerializersProduct
 from rest_framework.parsers import JSONParser
-from django.shortcuts import render
 import qrcode
-from qrcode.image.pil import PilImage
-from PIL import Image
 import io
 import base64
 from .tasks import send_email_fun
@@ -18,6 +14,9 @@ from django.conf import settings
 
 
 class GetQr(APIView):
+    parser_classes = [JSONParser]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, *args, **kwargs):
         pk = kwargs.get("pk", None)
         contact = Contact.objects.filter(company_id=pk)
@@ -34,10 +33,9 @@ class GetQr(APIView):
         qr_code_image = qr.make_image(fill_color="black", back_color="white").convert('RGB')
         buffer = io.BytesIO()
         qr_code_image.save(buffer, format="PNG")
-
         qr_code_image_data = base64.b64encode(buffer.getvalue()).decode()
         try:
-            send_email_fun.delay("Contacts", qr_code_image_data, settings.EMAIL_HOST_USER, "lupanova.99@mail.ru")
+            send_email_fun.delay("Contacts", qr_code_image_data, settings.EMAIL_HOST_USER, request.user.email)
             return Response(status=status.HTTP_200_OK)
         except:
             return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -48,7 +46,8 @@ class Objects(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        providers = Provider.objects.all()
+        user_company_id = Employee.objects.filter(user__username=request.user.username).values_list('company')[0][0]
+        providers = Provider.objects.filter(id=user_company_id)
         serializer = SerializersProviderAll(providers, many=True)
         return Response(serializer.data)
 
@@ -136,7 +135,7 @@ class ObjectsByCountryView(APIView):
 
     def get(self, request):
         country = request.query_params.get('country')
-        providers = Provider.objects.filter(contacts__country=country)
+        providers = Provider.objects.filter(contacts__country__iexact=country)
         serializer = SerializersProviderAll(providers, many=True)
         return Response(serializer.data)
 
@@ -151,11 +150,19 @@ class ObjectsHaveHighDebt(APIView):
         return Response(serializer.data)
 
 
-class ObjectsByProduct(APIView):
+class ObjectsByFilters(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        product_id = request.query_params.get('product_id')
-        providers = Provider.objects.filter(products__id=product_id)
-        serializer = SerializersProviderAll(providers, many=True)
-        return Response(serializer.data)
+        country = request.query_params.get('country', None)
+        product_id = request.query_params.get('product_id', None)
+        if country:
+            providers = Provider.objects.filter(contacts__country__iexact=country)
+            serializer = SerializersProviderAll(providers, many=True)
+            return Response(serializer.data)
+        elif product_id:
+            providers = Provider.objects.filter(products__id=product_id)
+            serializer = SerializersProviderAll(providers, many=True)
+            return Response(serializer.data)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)

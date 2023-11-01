@@ -1,17 +1,22 @@
 from rest_framework import serializers
 from .models import Provider, Product, Employee, Contact
 from datetime import datetime
+from django.contrib.auth.models import User
+
 
 class SerializersContact(serializers.ModelSerializer):
     class Meta:
         model = Contact
-        fields = ('id', 'email', 'country', 'city', 'street', 'building_number')
+        fields = ('email', 'country', 'city', 'street', 'building_number')
 
 
 class SerializersEmployee(serializers.ModelSerializer):
+    username = serializers.CharField(read_only=True, source="user.username")
+    email = serializers.CharField(read_only=True, source="user.email")
+
     class Meta:
         model = Employee
-        fields = ('id', 'first_name', 'last_name', 'email', 'position', 'is_active')
+        fields = ('username', 'position', 'email')
 
 
 class SerializersProduct(serializers.ModelSerializer):
@@ -61,7 +66,6 @@ class SerializersProvider(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return Provider.objects.create(**validated_data)
-
 
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)
