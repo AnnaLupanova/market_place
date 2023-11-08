@@ -24,17 +24,6 @@ class SerializersProduct(serializers.ModelSerializer):
         model = Product
         fields = ('id', 'name', 'model', 'created_date_of_product')
 
-    def create(self, validated_data):
-        return Product.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        instance.name = validated_data.get('name', instance.name)
-        instance.model = validated_data.get('model', instance.model)
-        instance.created_date_of_product = validated_data.get('created_date_of_product',
-                                                              instance.created_date_of_product)
-        instance.save()
-        return instance
-
     def validate_name(self, value):
         if len(value) > 25:
             raise serializers.ValidationError('The length of name product must be less 25 symbols')
@@ -63,17 +52,7 @@ class SerializersProvider(serializers.ModelSerializer):
     class Meta:
         model = Provider
         fields = ('id', 'name', 'type', 'parent', 'date_created', 'debt_to_provider')
-
-    def create(self, validated_data):
-        return Provider.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        instance.name = validated_data.get('name', instance.name)
-        instance.type = validated_data.get('type', instance.type)
-        instance.parent = validated_data.get('parent', instance.parent)
-        instance.date_created = validated_data.get('date_created', instance.date_created)
-        instance.save()
-        return instance
+        read_only_fields = ('debt_to_provider',)
 
     def validate_name(self, value):
         if len(value) > 50:

@@ -30,8 +30,9 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.action(description='Обнулить задолженность перед поставщиком')
 def reset_debt(modeladmin, request, queryset):
-    if len(queryset) > 1:
-        reset_debt_celery(queryset)
+    if len(queryset) > 20:
+        for obj in queryset:
+            reset_debt_celery.delay(obj)
     else:
         queryset.update(debt_to_provider=0.0)
 

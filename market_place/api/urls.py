@@ -1,14 +1,13 @@
-from . import views
-from django.urls import path, re_path
-from .views import Objects, ObjectsHaveHighDebt, Products,GetQr, ObjectsByFilters
+from django.urls import path, include
+from rest_framework import routers
+from .views import ObjectsViewSet, ProductsViewSet
+
+router = routers.DefaultRouter()
+router.register(r'objects', ObjectsViewSet)
+router.register(r'products', ProductsViewSet)
 
 urlpatterns = [
-    path('objects/filter/', ObjectsByFilters.as_view()),
-    path('objects/high_debt/', ObjectsHaveHighDebt.as_view()),
-    path('objects/<int:pk>/', Objects.as_view()),
-    path('objects/<int:pk>/qr', GetQr.as_view()),
-    path('objects/', Objects.as_view()),
-    path('products/<int:pk>/', Products.as_view()),
-    path('products/', Products.as_view()),
-
+    path('', include(router.urls)),
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 ]
+

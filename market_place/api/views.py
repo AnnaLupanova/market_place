@@ -1,24 +1,42 @@
 from django.db.models import Avg
-from rest_framework.views import APIView
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Product, Provider, Contact, Employee
-from .serializers import SerializersProvider, SerializersProviderAll, SerializersProduct
-from rest_framework.parsers import JSONParser
+from .models import Product, Provider, Contact
+from rest_framework.decorators import action
+from .serializers import SerializersProviderAll, SerializersProduct, SerializersProvider
 import qrcode
 import io
 import base64
-from .tasks import send_email_fun
+from .tasks import send_email
 from django.conf import settings
+from django_filters.rest_framework import DjangoFilterBackend
 
 
-class GetQr(APIView):
-    parser_classes = [JSONParser]
+class ObjectsViewSet(viewsets.ModelViewSet):
+    queryset = Provider.objects.all()
+    serializer_class = SerializersProvider
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['contacts__country', 'products__id']
+    serializer_action_classes = {
+        'list': SerializersProviderAll
+    }
 
-    def get(self, request, *args, **kwargs):
-        pk = kwargs.get("pk", None)
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        filter_backends = self.filter_queryset(queryset)
+        serializer = SerializersProviderAll(filter_backends, many=True)
+        return Response(serializer.data)
+
+    def get_serializer_class(self):
+        try:
+            return self.serializer_action_classes[self.action]
+        except (KeyError, AttributeError):
+            return super().get_serializer_class()
+
+    @action(methods=['get'], detail=True, url_path='contacts')
+    def send_qr_with_contacts(self, request, pk=None):
         contact = Contact.objects.filter(company_id=pk)
         qr = qrcode.QRCode(
             version=1,
@@ -35,114 +53,13 @@ class GetQr(APIView):
         qr_code_image.save(buffer, format="PNG")
         qr_code_image_data = base64.b64encode(buffer.getvalue()).decode()
         try:
-            send_email_fun.delay("Contacts", qr_code_image_data, settings.EMAIL_HOST_USER, request.user.email)
+
+            send_email.delay("Contacts", qr_code_image_data, settings.EMAIL_HOST_USER, request.user.email)
             return Response(status=status.HTTP_200_OK)
         except:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-
-class Objects(APIView):
-    parser_classes = [JSONParser]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user_company_id = Employee.objects.filter(user__username=request.user.username).values_list('company')[0][0]
-        providers = Provider.objects.filter(id=user_company_id)
-        serializer = SerializersProviderAll(providers, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, *args, **kwargs):
-        data = request.data
-        serializer = SerializersProvider(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response({'post': serializer.data})
-
-    def put(self, request, *args, **kwargs):
-        pk = kwargs.get("pk", None)
-        if not pk:
-            return Response({"error": "Method PUT not allowed"})
-
-        try:
-            instance = Provider.objects.get(pk=pk)
-        except:
-            return Response({"error": "Object does not exists"})
-
-        serializer = SerializersProvider(data=request.data, instance=instance, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response({"post": serializer.data})
-
-    def delete(self, request, *args, **kwargs):
-        pk = kwargs.get("pk", None)
-        if not pk:
-            return Response({"error": "Method DELETE not allowed"})
-        try:
-            Provider.objects.get(pk=pk).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except:
-            return Response({"error": "Object does not exists"})
-
-
-class Products(APIView):
-    permission_classes = [IsAuthenticated]
-    parser_classes = [JSONParser]
-
-    def get(self, request):
-        providers = Product.objects.all()
-        serializer = SerializersProduct(providers, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, *args, **kwargs):
-        data = request.data
-        serializer = SerializersProduct(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response({'post': serializer.data})
-
-    def put(self, request, *args, **kwargs):
-        pk = kwargs.get("pk", None)
-        if not pk:
-            return Response({"error": "Method PUT not allowed"})
-
-        try:
-            instance = Product.objects.get(pk=pk)
-        except:
-            return Response({"error": "Object does not exists"})
-
-        serializer = SerializersProduct(data=request.data, instance=instance)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response({"post": serializer.data})
-
-    def delete(self, request, *args, **kwargs):
-        pk = kwargs.get("pk", None)
-        if not pk:
-            return Response({"error": "Method DELETE not allowed"})
-        try:
-            Product.objects.get(pk=pk).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except:
-            return Response({"error": "Object does not exists"})
-
-
-class ObjectsByCountryView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        country = request.query_params.get('country')
-        providers = Provider.objects.filter(contacts__country__iexact=country)
-        serializer = SerializersProviderAll(providers, many=True)
-        return Response(serializer.data)
-
-
-class ObjectsHaveHighDebt(APIView):
-    permission_classes = [IsAuthenticated]
-
+    @action(methods=['get'], detail=False, url_path='big_debt')
     def get(self, request):
         avg = Provider.objects.aggregate(avg=Avg('debt_to_provider'))
         providers = Provider.objects.filter(debt_to_provider__gt=avg['avg'])
@@ -150,19 +67,7 @@ class ObjectsHaveHighDebt(APIView):
         return Response(serializer.data)
 
 
-class ObjectsByFilters(APIView):
-    permission_classes = [IsAuthenticated]
+class ProductsViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = SerializersProduct
 
-    def get(self, request):
-        country = request.query_params.get('country', None)
-        product_id = request.query_params.get('product_id', None)
-        if country:
-            providers = Provider.objects.filter(contacts__country__iexact=country)
-            serializer = SerializersProviderAll(providers, many=True)
-            return Response(serializer.data)
-        elif product_id:
-            providers = Provider.objects.filter(products__id=product_id)
-            serializer = SerializersProviderAll(providers, many=True)
-            return Response(serializer.data)
-
-        return Response(status=status.HTTP_400_BAD_REQUEST)

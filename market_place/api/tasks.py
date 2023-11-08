@@ -28,7 +28,7 @@ def decrement_debt():
 
 
 @shared_task(serializer='json', name="send_mail")
-def send_email_fun(subject, message, sender, receiver):
+def send_email(subject, message, sender, receiver):
     ctx = {
         'qr_code_image': message,
     }
@@ -39,7 +39,6 @@ def send_email_fun(subject, message, sender, receiver):
 
 
 @shared_task
-def reset_debt_celery(queryset):
-    for obj in queryset:
-        obj.debt_to_provider = 0.0
-        obj.save()
+def reset_debt_celery(obj):
+    obj.debt_to_provider = 0.0
+    obj.save()

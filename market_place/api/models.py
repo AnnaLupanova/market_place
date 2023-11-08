@@ -1,8 +1,7 @@
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
-from datetime import datetime
 from django.contrib.auth.models import User
-
+from datetime import datetime
 
 class Employee(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name='Имя пользователя', related_name='users')
@@ -35,7 +34,7 @@ class Provider(MPTTModel):
     type = models.CharField('Тип сети', choices=type_choices, max_length=128)
     parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children',
                             verbose_name='Поставщик')
-    date_created = models.DateTimeField('Время создания', auto_now_add=True)
+    date_created = models.DateTimeField('Время создания', default=datetime.now())
     debt_to_provider = models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Задолженность')
 
     class Meta:
@@ -50,7 +49,6 @@ class Provider(MPTTModel):
 
 
 class Product(models.Model):
-    id = models.AutoField('id', primary_key=True)
     name = models.CharField('Название', max_length=128)
     model = models.CharField('Модель', max_length=128)
     created_date_of_product = models.DateField('Дата выпуска')
@@ -66,7 +64,6 @@ class Product(models.Model):
 
 
 class Contact(models.Model):
-    id = models.AutoField('id', primary_key=True)
     email = models.EmailField('email', max_length=128)
     country = models.CharField('Страна', max_length=128)
     city = models.CharField('Город', max_length=128)
@@ -83,7 +80,6 @@ class Contact(models.Model):
 
 
 class RelatedProviderToProduct(models.Model):
-    id = models.AutoField('id', primary_key=True)
     product_id = models.ForeignKey('Product', on_delete=models.CASCADE, verbose_name='Продукт')
     provider_id = models.ForeignKey('Provider', on_delete=models.CASCADE, verbose_name='Поставщик')
 
